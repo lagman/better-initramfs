@@ -34,7 +34,7 @@
 IFS=''
 
 if ! [ -e '/luks_passfifo' ]; then
-	eerror "There is no '/luks_passfifo'."
+	#eerror "There is no '/luks_passfifo'."
 	exit 1
 fi
 

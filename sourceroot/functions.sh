@@ -30,23 +30,23 @@
 einfo() { echo -ne "\033[1;30m>\033[0;36m>\033[1;36m> \033[0m${*}\n" ;}
 ewarn() { echo -ne "\033[1;30m>\033[0;33m>\033[1;33m> \033[0m${*}\n" >&2;}
 eerror() { echo -ne "\033[1;30m>\033[0;31m>\033[1;31m> ${*}\033[0m\n" >&2 ;}
-die() { eerror "$*"; rescueshell; }
+die() { #eerror "$*"; rescueshell; }
 
 
 InitializeBusybox() {
-	einfo "Create all the symlinks to /bin/busybox."
+	#einfo "Create all the symlinks to /bin/busybox."
 	run /bin/busybox --install -s
 }
 
 rescueshell() {
 	if [ "$rescueshell" != 'true' ]; then
 		# If we did not forced rescueshell by kernel opt, print additional message.
-		ewarn "Dropping to rescueshell because of above error."
+		#ewarn "Dropping to rescueshell because of above error."
 	fi
 
-	ewarn "Rescue Shell (busybox's /bin/sh)"
-	ewarn "To reboot, press 'control-alt-delete'."
-	ewarn "If you wish resume booting process, run 'resume-boot'."
+	#ewarn "Rescue Shell (busybox's /bin/sh)"
+	#ewarn "To reboot, press 'control-alt-delete'."
+	#ewarn "If you wish resume booting process, run 'resume-boot'."
 	if [ "$console" ] && [ -c "/dev/${console}" ]; then
 		setsid sh -c "exec sh --login </dev/"${console}" >/dev/${console} 2>&1"
 	elif [ -c '/dev/tty1' ]; then
@@ -67,7 +67,7 @@ run() {
 	if "$@"; then
 		echo "Executed: '$@'" >> /init.log
 	else
-		eerror "'$@' failed."
+		#eerror "'$@' failed."
 		echo "Failed: '$@'" >> /init.log
 		echo "$@" >> /.ash_history
 		rescueshell
@@ -84,7 +84,7 @@ run_hooks() {
 	if [ -d "/hooks/$1" ]; then
 		for i in /hooks/$1/*; do
 			[ "$i" = "/hooks/$1/*" ] && break
-			einfo "Running '$i' hook ..."
+			#einfo "Running '$i' hook ..."
 			[ -x "$i" ] && . "$i"
 		done
 	fi
@@ -104,7 +104,7 @@ populate_dev_disk_by_label_and_uuid() {
 	local block_device blkid_output LABEL UUID TYPE
 	local vars
 
-	einfo "Populating /dev/disk/by-{uuid,label} ..."
+	#einfo "Populating /dev/disk/by-{uuid,label} ..."
 
 	dodir /dev/disk /dev/disk/by-uuid /dev/disk/by-label
 
@@ -130,7 +130,7 @@ resolve_device() {
 		LABEL\=*|UUID\=*)
 			eval $1="$(findfs $device)"
 			if [ -z "$(eval echo \$$1)" ]; then
-				eerror "Wrong UUID or LABEL."
+				#eerror "Wrong UUID or LABEL."
 				rescueshell
 			fi
 		;;
@@ -258,7 +258,7 @@ musthave() {
 	while [ -n "$1" ]; do
 		# We can handle it by use() function, yay!
 		if ! use "$1"; then
-			eerror "The \"$1\" variable is empty, set to false or zero but shoudn't be."
+			#eerror "The \"$1\" variable is empty, set to false or zero but shoudn't be."
 			local missing_variable='true'
 		fi
 		shift
@@ -297,7 +297,7 @@ get_majorminor() {
 
 InitializeLUKS() {
 	if [ ! -f /bin/cryptsetup ]; then
-		eerror "There is no cryptsetup binary into initramfs image."
+		#eerror "There is no cryptsetup binary into initramfs image."
 		rescueshell
 	fi
 
@@ -315,7 +315,7 @@ InitializeLUKS() {
 
 		resolve_device enc_dev
 
-		einfo "Opening encrypted partition '${enc_dev##*/}' and mapping to '/dev/mapper/${dev_name}'."
+		#einfo "Opening encrypted partition '${enc_dev##*/}' and mapping to '/dev/mapper/${dev_name}'."
 
 		# Hack for cryptsetup which trying to run /sbin/udevadm.
 		run echo -e "#!/bin/sh\nexit 0" > /sbin/udevadm
@@ -338,14 +338,14 @@ InitializeLUKS() {
 }
 
 InitializeLVM() {
-	einfo "Scaning all disks for volume groups."
+	#einfo "Scaning all disks for volume groups."
 	# We have to ensure that cache does not exist so vgchange will run 'vgscan' itself.
 	if [ -d '/etc/lvm/cache' ]; then run rm -rf '/etc/lvm/cache'; fi
 	run lvm vgchange -a y
 }
 
 InitializeSoftwareRaid() {
-	einfo "Scaning for software raid arrays."
+	#einfo "Scaning for software raid arrays."
 	if ! [ -f '/etc/mdadm.conf' ]; then
 		run mdadm --examine --scan > /etc/mdadm.conf
 	fi
@@ -370,10 +370,10 @@ SwsuspResume() {
 	if [ -f '/sys/power/resume' ]; then
 		local resume_majorminor="$(get_majorminor "${resume}")"
 		musthave resume_majorminor
-		einfo 'Sending resume device to /sys/power/resume ...'
+		#einfo 'Sending resume device to /sys/power/resume ...'
 		echo "${resume_majorminor}" > /sys/power/resume
 	else
-		ewarn "Apparently this kernel does not support suspend."
+		#ewarn "Apparently this kernel does not support suspend."
 	fi
 }
 
@@ -383,17 +383,17 @@ UswsuspResume() {
 	if [ -f '/sys/power/resume' ]; then
 		run resume --resume_device "${resume}"
 	else
-		ewarn "Apparently this kernel does not support suspend."
+		#ewarn "Apparently this kernel does not support suspend."
 	fi
 }
 
 TuxOnIceResume() {
 	musthave resume
 	if [ -f '/sys/power/tuxonice/do_resume' ]; then
-		einfo "Sending do_resume signal to TuxOnIce."
+		#einfo "Sending do_resume signal to TuxOnIce."
 		run echo 1 > /sys/power/tuxonice/do_resume
 	else
-		ewarn "Apparently this kernel does not support TuxOnIce."
+		#ewarn "Apparently this kernel does not support TuxOnIce."
 	fi
 }
 
@@ -401,7 +401,7 @@ register_bcache_devices() {
 	# Push all the block devices to register_quiet
 	# If its bcache, it will bring it up, if not, it will simply ignore it.
 	if ! [ -e /sys/fs/bcache/register_quiet ]; then
-		ewarn "There's no bcache interface. Missing kernel driver?"
+		#ewarn "There's no bcache interface. Missing kernel driver?"
 		return 0
 	fi
 
@@ -420,8 +420,8 @@ SetupNetwork() {
 
 	# backward compatibility
 	if [ "${sshd_interface}" ]; then
-		ewarn "sshd_interface is deprecated, check README"
-		ewarn "and switch to binit_net_if!"
+		#ewarn "sshd_interface is deprecated, check README"
+		#ewarn "and switch to binit_net_if!"
 		binit_net_if="${sshd_interface}"
 		binit_net_addr="${sshd_ipv4}"
 		binit_net_gw="${sshd_ipv4_gateway}"
@@ -441,35 +441,35 @@ SetupNetwork() {
 			vlan='true'
 			binit_net_physif="${binit_net_if%%.*}"
 			local binit_net_vlan="${binit_net_if##*.}"
-			einfo "Bringing up ${binit_net_physif} interface ..."
+			#einfo "Bringing up ${binit_net_physif} interface ..."
 			run ip link set up dev "${binit_net_physif}"
-			einfo "Adding VLAN ${binit_net_vlan} on ${binit_net_physif} interface ..."
+			#einfo "Adding VLAN ${binit_net_vlan} on ${binit_net_physif} interface ..."
 			run vconfig add "${binit_net_physif}" "${binit_net_vlan}"
 		;;
 	esac
 
-	einfo "Bringing up ${binit_net_if} interface ..."
+	#einfo "Bringing up ${binit_net_if} interface ..."
 	run ip link set up dev "${binit_net_if}"
 
-	einfo "Setting ${binit_net_addr} on ${binit_net_if} ..."
+	#einfo "Setting ${binit_net_addr} on ${binit_net_if} ..."
 	run ip addr add "${binit_net_addr}" dev "${binit_net_if}"
 
 	if [ -n "${binit_net_routes}" ]; then
 		for route in ${binit_net_routes}; do
-			einfo "Adding additional route '${route}' ..."
+			#einfo "Adding additional route '${route}' ..."
 			run ip route add "${route}" dev "${binit_net_if}"
 		done
 	fi
 
 	if [ -n "${binit_net_gw}" ]; then
-		einfo "Setting default routing via '${binit_net_gw}' ..."
+		#einfo "Setting default routing via '${binit_net_gw}' ..."
 		run ip route add default via "${binit_net_gw}" dev "${binit_net_if}"
 	fi
 }
 
 setup_sshd() {
 	# Prepare /dev/pts.
-	einfo "Mounting /dev/pts ..."
+	#einfo "Mounting /dev/pts ..."
 	if ! [ -d /dev/pts ]; then run mkdir /dev/pts; fi
 	run mount -t devpts none /dev/pts
 
@@ -477,7 +477,7 @@ setup_sshd() {
 	dodir /etc/dropbear /var/log /var/run /root/.ssh
 
 	# Generate host keys.
-	einfo "Generating dropbear ssh host keys ..."
+	#einfo "Generating dropbear ssh host keys ..."
 	test -f /etc/dropbear/dropbear_rsa_host_key || \
 		run dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key > /dev/null
 	test -f /etc/dropbear/dropbear_dss_host_key || \
@@ -489,11 +489,11 @@ setup_sshd() {
 	if [ -f /authorized_keys ]; then
 		run cp /authorized_keys /root/.ssh/authorized_keys
 	else
-		eerror "Missing /authorized_keys file, you will be no able login via sshd."
+		#eerror "Missing /authorized_keys file, you will be no able login via sshd."
 		rescueshell
 	fi
 
-	einfo 'Starting dropbear sshd ...'
+	#einfo 'Starting dropbear sshd ...'
 	run dropbear -s -p "${binit_net_addr%/*}:${sshd_port:-22}"
 }
 
@@ -501,14 +501,14 @@ wait_sshd() {
 	if use sshd_wait; then
 		# sshd_wait exist, now we should sleep for X sec.
 		if [ "${sshd_wait}" -gt 0 2>/dev/null ]; then
-			einfo "Waiting ${sshd_wait}s (sshd_wait)"
+			#einfo "Waiting ${sshd_wait}s (sshd_wait)"
 			while [ ${sshd_wait} -gt 0 ]; do
 				[ -f '/remote-rescueshell.lock' ] && break
 				sshd_wait=$((sshd_wait - 1))
 				sleep 1
 			done
 		else
-			ewarn "\$sshd_wait variable must be numeric and greater than zero. Skipping sshd_wait."
+			#ewarn "\$sshd_wait variable must be numeric and greater than zero. Skipping sshd_wait."
 		fi
 	fi
 }
@@ -516,8 +516,8 @@ wait_sshd() {
 cleanup() {
 	if use binit_net_if; then
 		if [ -f '/remote-rescueshell.lock' ]; then
-			ewarn "The lockfile at '/remote-rescueshell.lock' exist."
-			ewarn "The boot process will be paused until the lock is removed."
+			#ewarn "The lockfile at '/remote-rescueshell.lock' exist."
+			#ewarn "The boot process will be paused until the lock is removed."
 			while true; do
 				if [ -f '/remote-rescueshell.lock' ]; then
 					sleep 1
@@ -548,7 +548,7 @@ cleanup() {
 
 boot_newroot() {
 	init="${init:-/sbin/init}"
-	einfo "Switching root to /newroot and executing ${init}."
+	#einfo "Switching root to /newroot and executing ${init}."
 	if ! [ -x "/newroot/${init}" ]; then die "There is no executable '/newroot/${init}'."; fi
 	exec env -i \
 		TERM="${TERM:-linux}" \
@@ -563,9 +563,9 @@ emount() {
 		case $1 in
 			'/newroot')
 				if mountpoint -q '/newroot'; then
-					einfo "/newroot already mounted, skipping..."
+					#einfo "/newroot already mounted, skipping..."
 				else	
-					einfo "Mounting /newroot..."
+					#einfo "Mounting /newroot..."
 					musthave root
 					if [ "${rootfsmountparams}" ]; then
 						mountparams="${rootfsmountparams}"
@@ -583,7 +583,7 @@ emount() {
 						while read device mountpoint fstype fsflags _; do
 						if [ "${mountpoint}" = '/usr' ]; then
 							if [ -d '/newroot/usr' ]; then
-								einfo "Mounting /newroot/usr..."
+								#einfo "Mounting /newroot/usr..."
 								run mount -o "${fsflags},${root_rw_ro:-ro}" -t "${fstype}" "${device}" '/newroot/usr'
 							else
 								die "/usr in fstab present but no mountpoint /newroot/usr found."
@@ -592,8 +592,8 @@ emount() {
 						fi
 					done < '/newroot/etc/fstab'
 				else
-					ewarn "No /newroot/etc/fstab present."
-					ewarn "Early mouting of /usr will not be done."
+					#ewarn "No /newroot/etc/fstab present."
+					#ewarn "Early mouting of /usr will not be done."
 				fi
 			;;
 	
@@ -601,10 +601,10 @@ emount() {
 				local devmountopts='nosuid,relatime,size=10240k,mode=755'
 
 				if grep -q 'devtmpfs' '/proc/filesystems' && ! use mdev; then
-					einfo "Mounting /dev (devtmpfs)..."
+					#einfo "Mounting /dev (devtmpfs)..."
 					run mount -t devtmpfs -o ${devmountopts} devtmpfs /dev
 				else
-					einfo "Mounting /dev (mdev over tmpfs)..."
+					#einfo "Mounting /dev (mdev over tmpfs)..."
 					run mount -t tmpfs -o ${devmountopts} dev /dev
 					run touch /etc/mdev.conf
 					run echo /sbin/mdev > /proc/sys/kernel/hotplug
@@ -621,17 +621,17 @@ emount() {
 			;;
 
 			'/proc')
-				einfo "Mounting /proc..."
+				#einfo "Mounting /proc..."
 				run mount -t proc proc /proc
 			;;
 
 			'/sys')
-				einfo "Mounting /sys..."
+				#einfo "Mounting /sys..."
 				run mount -t sysfs sysfs /sys
 			;;
 
 			*)
-				eerror "emount() does not understand \"$1\""
+				#eerror "emount() does not understand \"$1\""
 			;;
 		esac
 		shift
@@ -642,7 +642,7 @@ eumount() {
 	while [ "$#" -gt 0 ]; do
 		case "$1" in
 			*)
-				einfo "Unmounting ${1}..."
+				#einfo "Unmounting ${1}..."
 				run umount "$1"
 			;;
 		esac
@@ -651,7 +651,7 @@ eumount() {
 }	
 
 moveDev() {
-	einfo "Moving /dev to /newroot/dev..."
+	#einfo "Moving /dev to /newroot/dev..."
 	if mountpoint -q /dev/pts; then umount -l /dev/pts; fi
 	if use mdev; then run echo '' > /proc/sys/kernel/hotplug; fi
 	run mount --move /dev /newroot/dev
@@ -659,10 +659,10 @@ moveDev() {
 
 rootdelay() {
 	if [ "${rootdelay}" -gt 0 2>/dev/null ]; then
-		einfo "Waiting ${rootdelay}s (rootdelay)"
+		#einfo "Waiting ${rootdelay}s (rootdelay)"
 		run sleep ${rootdelay}
 	else
-		ewarn "\$rootdelay variable must be numeric and greater than zero. Skipping rootdelay."
+		#ewarn "\$rootdelay variable must be numeric and greater than zero. Skipping rootdelay."
 	fi
 }
 

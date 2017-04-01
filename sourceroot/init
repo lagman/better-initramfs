@@ -55,7 +55,7 @@ readonly default_ifs="${IFS}"
 kernelver="$(uname -r)"
 ver="$(cat /VERSION)"
 
-einfo "better-initramfs ${ver}. Linux kernel ${kernelver}.\n"
+#einfo "better-initramfs ${ver}. Linux kernel ${kernelver}.\n"
 echo -e "\nWelcome to better-initramfs ${ver}. Linux kernel ${kernelver}.\n" > /etc/motd
 
 emount /proc /sys
@@ -95,7 +95,7 @@ eumount /sys /proc
 run_hooks pre_switch_root
 boot_newroot
 
-ewarn "Something went wrong."
+#ewarn "Something went wrong."
 rescueshell
 
 # vim: noexpandtab
