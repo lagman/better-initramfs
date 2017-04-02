@@ -35,7 +35,6 @@ die() { rescueshell; }
 
 InitializeBusybox() {
 	#einfo "Create all the symlinks to /bin/busybox."
-					echo ""
 	run /bin/busybox --install -s
 }
 
@@ -70,7 +69,6 @@ run() {
 		echo "Executed: '$@'" >> /init.log
 	else
 		#eerror "'$@' failed."
-		echo ""
 		echo "Failed: '$@'" >> /init.log
 		echo "$@" >> /.ash_history
 		rescueshell
@@ -88,7 +86,6 @@ run_hooks() {
 		for i in /hooks/$1/*; do
 			[ "$i" = "/hooks/$1/*" ] && break
 			#einfo "Running '$i' hook ..."
-					echo ""
 			[ -x "$i" ] && . "$i"
 		done
 	fi
@@ -109,7 +106,6 @@ populate_dev_disk_by_label_and_uuid() {
 	local vars
 
 	#einfo "Populating /dev/disk/by-{uuid,label} ..."
-					echo ""
 
 	dodir /dev/disk /dev/disk/by-uuid /dev/disk/by-label
 
@@ -136,7 +132,6 @@ resolve_device() {
 			eval $1="$(findfs $device)"
 			if [ -z "$(eval echo \$$1)" ]; then
 				#eerror "Wrong UUID or LABEL."
-		echo ""
 				rescueshell
 			fi
 		;;
@@ -258,6 +253,7 @@ use() {
 	else
 		return 1
 	fi
+	clear
 }
 
 musthave() {
@@ -265,7 +261,6 @@ musthave() {
 		# We can handle it by use() function, yay!
 		if ! use "$1"; then
 			#eerror "The \"$1\" variable is empty, set to false or zero but shoudn't be."
-		echo ""
 			local missing_variable='true'
 		fi
 		shift
@@ -303,9 +298,17 @@ get_majorminor() {
 }
 
 InitializeLUKS() {
+	clear
+	if [[ $( date +%Y ) -ge 2017 ]]
+	then
+		sed "s/DATE/$( date +%Y)/" /AVA.ascii
+	else
+		sed "s/DATE/2017/" /AVA.ascii
+	fi
+
+	echo
 	if [ ! -f /bin/cryptsetup ]; then
 		#eerror "There is no cryptsetup binary into initramfs image."
-		echo ""
 		rescueshell
 	fi
 
@@ -324,7 +327,6 @@ InitializeLUKS() {
 		resolve_device enc_dev
 
 		#einfo "Opening encrypted partition '${enc_dev##*/}' and mapping to '/dev/mapper/${dev_name}'."
-					echo ""
 
 		# Hack for cryptsetup which trying to run /sbin/udevadm.
 		run echo -e "#!/bin/sh\nexit 0" > /sbin/udevadm
@@ -336,6 +338,7 @@ InitializeLUKS() {
 		fi
 
 		if use sshd; then
+			echo "this is askpass"
 			askpass "Enter passphrase for ${enc_dev}: " | run cryptsetup --tries 1 --key-file=- luksOpen ${cryptsetup_args} "${enc_dev}" "${dev_name}"
 			# Remove the fifo, askpass will create new if needed (ex multiple devices).
 			rm '/luks_passfifo'
@@ -348,7 +351,6 @@ InitializeLUKS() {
 
 InitializeLVM() {
 	#einfo "Scaning all disks for volume groups."
-					echo ""
 	# We have to ensure that cache does not exist so vgchange will run 'vgscan' itself.
 	if [ -d '/etc/lvm/cache' ]; then run rm -rf '/etc/lvm/cache'; fi
 	run lvm vgchange -a y
@@ -356,7 +358,6 @@ InitializeLVM() {
 
 InitializeSoftwareRaid() {
 	#einfo "Scaning for software raid arrays."
-					echo ""
 	if ! [ -f '/etc/mdadm.conf' ]; then
 		run mdadm --examine --scan > /etc/mdadm.conf
 	fi
@@ -382,7 +383,6 @@ SwsuspResume() {
 		local resume_majorminor="$(get_majorminor "${resume}")"
 		musthave resume_majorminor
 		#einfo 'Sending resume device to /sys/power/resume ...'
-					echo ""
 		echo "${resume_majorminor}" > /sys/power/resume
 	else
 		#ewarn "Apparently this kernel does not support suspend."
@@ -405,11 +405,7 @@ TuxOnIceResume() {
 	musthave resume
 	if [ -f '/sys/power/tuxonice/do_resume' ]; then
 		#einfo "Sending do_resume signal to TuxOnIce."
-					echo ""
 		run echo 1 > /sys/power/tuxonice/do_resume
-	else
-		#ewarn "Apparently this kernel does not support TuxOnIce."
-		echo ""
 	fi
 }
 
@@ -458,33 +454,27 @@ SetupNetwork() {
 			binit_net_physif="${binit_net_if%%.*}"
 			local binit_net_vlan="${binit_net_if##*.}"
 			#einfo "Bringing up ${binit_net_physif} interface ..."
-					echo ""
 			run ip link set up dev "${binit_net_physif}"
 			#einfo "Adding VLAN ${binit_net_vlan} on ${binit_net_physif} interface ..."
-					echo ""
 			run vconfig add "${binit_net_physif}" "${binit_net_vlan}"
 		;;
 	esac
 
 	#einfo "Bringing up ${binit_net_if} interface ..."
-					echo ""
 	run ip link set up dev "${binit_net_if}"
 
 	#einfo "Setting ${binit_net_addr} on ${binit_net_if} ..."
-					echo ""
 	run ip addr add "${binit_net_addr}" dev "${binit_net_if}"
 
 	if [ -n "${binit_net_routes}" ]; then
 		for route in ${binit_net_routes}; do
 			#einfo "Adding additional route '${route}' ..."
-					echo ""
 			run ip route add "${route}" dev "${binit_net_if}"
 		done
 	fi
 
 	if [ -n "${binit_net_gw}" ]; then
 		#einfo "Setting default routing via '${binit_net_gw}' ..."
-					echo ""
 		run ip route add default via "${binit_net_gw}" dev "${binit_net_if}"
 	fi
 }
@@ -492,7 +482,6 @@ SetupNetwork() {
 setup_sshd() {
 	# Prepare /dev/pts.
 	#einfo "Mounting /dev/pts ..."
-					echo ""
 	if ! [ -d /dev/pts ]; then run mkdir /dev/pts; fi
 	run mount -t devpts none /dev/pts
 
@@ -501,7 +490,6 @@ setup_sshd() {
 
 	# Generate host keys.
 	#einfo "Generating dropbear ssh host keys ..."
-					echo ""
 	test -f /etc/dropbear/dropbear_rsa_host_key || \
 		run dropbearkey -t rsa -f /etc/dropbear/dropbear_rsa_host_key > /dev/null
 	test -f /etc/dropbear/dropbear_dss_host_key || \
@@ -514,12 +502,10 @@ setup_sshd() {
 		run cp /authorized_keys /root/.ssh/authorized_keys
 	else
 		#eerror "Missing /authorized_keys file, you will be no able login via sshd."
-		echo ""
 		rescueshell
 	fi
 
 	#einfo 'Starting dropbear sshd ...'
-					echo ""
 	run dropbear -s -p "${binit_net_addr%/*}:${sshd_port:-22}"
 }
 
@@ -528,7 +514,6 @@ wait_sshd() {
 		# sshd_wait exist, now we should sleep for X sec.
 		if [ "${sshd_wait}" -gt 0 2>/dev/null ]; then
 			#einfo "Waiting ${sshd_wait}s (sshd_wait)"
-					echo ""
 			while [ ${sshd_wait} -gt 0 ]; do
 				[ -f '/remote-rescueshell.lock' ] && break
 				sshd_wait=$((sshd_wait - 1))
@@ -546,7 +531,6 @@ cleanup() {
 		if [ -f '/remote-rescueshell.lock' ]; then
 			#ewarn "The lockfile at '/remote-rescueshell.lock' exist."
 			#ewarn "The boot process will be paused until the lock is removed."
-			echo ""
 			while true; do
 				if [ -f '/remote-rescueshell.lock' ]; then
 					sleep 1
@@ -578,7 +562,6 @@ cleanup() {
 boot_newroot() {
 	init="${init:-/sbin/init}"
 	#einfo "Switching root to /newroot and executing ${init}."
-					echo ""
 	if ! [ -x "/newroot/${init}" ]; then die "There is no executable '/newroot/${init}'."; fi
 	exec env -i \
 		TERM="${TERM:-linux}" \
@@ -597,7 +580,6 @@ emount() {
 					echo ""
 				else	
 					#einfo "Mounting /newroot..."
-					echo ""
 					musthave root
 					if [ "${rootfsmountparams}" ]; then
 						mountparams="${rootfsmountparams}"
@@ -616,7 +598,6 @@ emount() {
 						if [ "${mountpoint}" = '/usr' ]; then
 							if [ -d '/newroot/usr' ]; then
 								#einfo "Mounting /newroot/usr..."
-					echo ""
 								run mount -o "${fsflags},${root_rw_ro:-ro}" -t "${fstype}" "${device}" '/newroot/usr'
 							else
 								die "/usr in fstab present but no mountpoint /newroot/usr found."
@@ -636,11 +617,9 @@ emount() {
 
 				if grep -q 'devtmpfs' '/proc/filesystems' && ! use mdev; then
 					#einfo "Mounting /dev (devtmpfs)..."
-					echo ""
 					run mount -t devtmpfs -o ${devmountopts} devtmpfs /dev
 				else
 					#einfo "Mounting /dev (mdev over tmpfs)..."
-					echo ""
 					run mount -t tmpfs -o ${devmountopts} dev /dev
 					run touch /etc/mdev.conf
 					run echo /sbin/mdev > /proc/sys/kernel/hotplug
@@ -658,13 +637,11 @@ emount() {
 
 			'/proc')
 				#einfo "Mounting /proc..."
-					echo ""
 				run mount -t proc proc /proc
 			;;
 
 			'/sys')
 				#einfo "Mounting /sys..."
-					echo ""
 				run mount -t sysfs sysfs /sys
 			;;
 
@@ -682,7 +659,6 @@ eumount() {
 		case "$1" in
 			*)
 				#einfo "Unmounting ${1}..."
-					echo ""
 				run umount "$1"
 			;;
 		esac
@@ -692,7 +668,6 @@ eumount() {
 
 moveDev() {
 	#einfo "Moving /dev to /newroot/dev..."
-					echo ""
 	if mountpoint -q /dev/pts; then umount -l /dev/pts; fi
 	if use mdev; then run echo '' > /proc/sys/kernel/hotplug; fi
 	run mount --move /dev /newroot/dev
@@ -701,7 +676,6 @@ moveDev() {
 rootdelay() {
 	if [ "${rootdelay}" -gt 0 2>/dev/null ]; then
 		#einfo "Waiting ${rootdelay}s (rootdelay)"
-					echo ""
 		run sleep ${rootdelay}
 	else
 		#ewarn "\$rootdelay variable must be numeric and greater than zero. Skipping rootdelay."
